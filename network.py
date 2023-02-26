@@ -1,26 +1,26 @@
 import torch.nn as nn
 #channels = [16, 32]
 #kSizes = [5, 5]
+
 class Network(nn.Module):
-    def __init__(self, channels, kSizes):
-        self.channels = channels
+    def __init__(self, channels, kSizes, stride, padding, pool, output_flatten):
         super().__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=channels[0],
-                      kernel_size=kSizes[0], stride=1, padding=2),
+                      kernel_size=kSizes[0], stride=stride, padding=padding),
             nn.BatchNorm2d(num_features=channels[0]),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            nn.MaxPool2d(kernel_size=pool, stride=2)
         )
         self.layer2 = nn.Sequential(
             nn.Conv2d(in_channels=channels[0], out_channels=channels[1],
-                      kernel_size=kSizes[1], stride=1, padding = 2),
+                      kernel_size=kSizes[1], stride=stride, padding = padding),
             nn.BatchNorm2d(num_features=channels[1]),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            nn.MaxPool2d(kernel_size=pool, stride=2)
         )
         self.fc = nn.Sequential(
-            nn.Linear(in_features=1728, out_features=256),
+            nn.Linear(in_features=output_flatten, out_features=256),
             nn.Dropout(p=0.3),
             nn.ReLU()
         )
@@ -35,3 +35,4 @@ class Network(nn.Module):
         t = self.out(t)
 
         return t
+        

@@ -10,6 +10,8 @@ from torchvision import datasets
 from tqdm.notebook import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+from math import floor
+from new_network import calculate_convolution_output_shape
 
 class Genetic:
     
@@ -21,7 +23,8 @@ class Genetic:
         self.max_acc = 0
         self.best_arch = np.zeros((1,6))
         self.gen_acc = []
-    
+        self.best_model = None
+
     def generate_population(self):
         np.random.seed(0)
         pop_nlayers = np.random.randint(1,self.max_nfilters,(self.pop_size,self.nlayers))
@@ -37,67 +40,84 @@ class Genetic:
             fitness[best] = -99999
         return parents
     
-    def crossover(self,parents):
+    def crossover(self, parents):
         nchild = self.pop_size - parents.shape[0]
         nparents = parents.shape[0]
         child = np.zeros((nchild,parents.shape[1]))
         for i in range(nchild):
             first = i % nparents
             second = (i+1) % nparents
-            child[i,:2] = parents[first][:2]
-            child[i,2] = parents[second][2]
-            child[i,3:5] = parents[first][3:5]
-            child[i,5] = parents[second][5]
+            child[i,:1] = parents[first][:1]
+            child[i,1] = parents[second][1]
+            child[i,2:3] = parents[first][2:3]
+            child[i,3] = parents[second][3]
         return child
 
     def mutation(self,child):
         for i in range(child.shape[0]):
-            val = np.random.randint(1,6)
-            ind = np.random.randint(1,4) - 1
+            val = np.random.randint(1,4)
+            ind = np.random.randint(1,2) - 1
             if child[i][ind] + val > 100:
                 child[i][ind] -= val
             else:
                 child[i][ind] += val
             val = np.random.randint(1,4)
-            ind = np.random.randint(4,7) - 1
+            ind = np.random.randint(2,4) - 1
             if child[i][ind] + val > 20:
                 child[i][ind] -= val
             else:
                 child[i][ind] += val
         return child
-    
+        
     def fitness(self,pop,train_loader,test_loader,epochs, total):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         pop_acc = []
+        models = []
         for i in range(pop.shape[0]):
             nfilters = pop[i][0:2]
             sfilters = pop[i][2:]
-            model = Network(nfilters,sfilters)
+            print("Person: {}, Name: {}, {}".format(i, nfilters, sfilters))
+            last_conv = False
+            input_shape = (28,28)
+            stride=1
+            padding=2
+            pool=2
+            for i in range(len(nfilters)):
+                if i == len(nfilters)-1:
+                    last_conv = True
+                input_shape = calculate_convolution_output_shape(input_shape=input_shape, filter_shape=sfilters[i], stride=stride, padding=padding, pool=pool, nfilters=nfilters[i], last_conv=last_conv)
+            output_flatten = input_shape
+            model = Network(nfilters,sfilters, stride, padding, pool, output_flatten)
+            moel = model.to(device)
             criterion = nn.CrossEntropyLoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
             for epoch in range(epochs):
                 print('EPOCH {}:'.format(epoch + 1))
                 for images, labels in tqdm(train_loader):
                     optimizer.zero_grad()
-                    output = model(images)
+                    output = model(images.cuda())
                     #print(output.shape,labels.shape)
-                    loss = criterion(output, labels)
+                    loss = criterion(output, labels.cuda())
                     loss.backward()
                     optimizer.step()
             model.eval()
             correct = 0
-            with torch.no_grad():
-                for images, labels in tqdm(test_loader):
-                    output = model(images)
-                    predictions = torch.argmax(output, dim=1)
-                    correct += torch.sum((predictions == labels).float())
+            
+            for images, labels in tqdm(test_loader):
+              with torch.no_grad():
+                output = model(images.cuda())
+              predictions = torch.argmax(output, dim=1)
+              correct += torch.sum((predictions.cpu() == labels).float())
             acc = correct/total
             #acc = H.history['accuracy']
             pop_acc.append(acc*100)
+            models.append(model)
         if max(pop_acc) > self.max_acc:
             self.max_acc = max(pop_acc)
             self.best_arch = pop[np.argmax(pop_acc)]
+            self.best_model = models[pop_acc.index(max(pop_acc))]
         self.gen_acc.append(max(pop_acc))
-        return pop_acc
+        return pop_acc, self.best_model
     
     def smooth_curve(self,factor,gen):
         smoothed_points = []
