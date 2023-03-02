@@ -55,15 +55,16 @@ class Genetic:
 
     def mutation(self,child):
         for i in range(child.shape[0]):
-            val = np.random.randint(1,4)
-            ind = np.random.randint(1,2) - 1
+            val = np.random.randint(1,20)
+            ind = np.random.randint(1,3) - 1
             if child[i][ind] + val > 100:
                 child[i][ind] -= val
             else:
                 child[i][ind] += val
-            val = np.random.randint(1,4)
-            ind = np.random.randint(2,4) - 1
-            if child[i][ind] + val > 20:
+            val = np.random.randint(1,5)
+            ind = np.random.randint(3,5) - 1
+            print(ind)
+            if child[i][ind] + val > 10:
                 child[i][ind] -= val
             else:
                 child[i][ind] += val
