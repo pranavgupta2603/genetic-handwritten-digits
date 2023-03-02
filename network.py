@@ -10,14 +10,14 @@ class Network(nn.Module):
                       kernel_size=kSizes[0], stride=stride, padding=padding),
             nn.BatchNorm2d(num_features=channels[0]),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=pool, stride=2)
+            nn.MaxPool2d(kernel_size=pool, stride=stride)
         )
         self.layer2 = nn.Sequential(
             nn.Conv2d(in_channels=channels[0], out_channels=channels[1],
                       kernel_size=kSizes[1], stride=stride, padding = padding),
             nn.BatchNorm2d(num_features=channels[1]),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=pool, stride=2)
+            nn.MaxPool2d(kernel_size=pool, stride=stride)
         )
         self.fc = nn.Sequential(
             nn.Linear(in_features=output_flatten, out_features=256),
