@@ -88,7 +88,7 @@ class Genetic:
                 input_shape = calculate_convolution_output_shape(input_shape=input_shape, filter_shape=sfilters[i], stride=stride, padding=padding, pool=pool, nfilters=nfilters[i], last_conv=last_conv)
             output_flatten = input_shape
             model = Network(nfilters,sfilters, stride, padding, pool, output_flatten)
-            moel = model.to(device)
+            model = model.to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
             for epoch in range(epochs):
@@ -96,7 +96,6 @@ class Genetic:
                 for images, labels in tqdm(train_loader):
                     optimizer.zero_grad()
                     output = model(images.cuda())
-                    #print(output.shape,labels.shape)
                     loss = criterion(output, labels.cuda())
                     loss.backward()
                     optimizer.step()
